@@ -6,10 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
-type SqsConnection struct {
-}
-
-func (s SqsConnection) GetConnection() Client {
+func GetConnection() Client {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		panic("configuration error, " + err.Error())
