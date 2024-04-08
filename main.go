@@ -13,7 +13,7 @@ func main() {
 	client := messageconnector.GetConnection()
 	url, err := client.CreateQueue("test-1", true)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("CreateQueue err: %v", err)
 	}
 	log.Println(url)
 }

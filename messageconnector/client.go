@@ -1,12 +1,11 @@
 package messageconnector
 
-import "github.com/aws/aws-sdk-go-v2/service/sqs"
-
 type Client interface {
-	SendMessage(messageBody string)
+	SendMessage(messageBody string, messageUrl string, groupId string)
 
-	ReceiveMessage() (*sqs.ReceiveMessageOutput, error)
-	DeleteMessage(*sqs.SendMessageOutput)
+	ReceiveMessage() error
+	DeleteMessage()
 
 	CreateQueue(queueName string, isFifoQueue bool) (url string, err error)
+	GetQueueList() (queueUrls []string, err error)
 }
