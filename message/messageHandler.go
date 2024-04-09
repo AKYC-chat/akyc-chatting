@@ -1,6 +1,6 @@
-package messageconnector
+package message
 
-type Client interface {
+type MessageHandler interface {
 	SendMessage(messageBody string, messageUrl string, groupId string)
 
 	ReceiveMessage() error

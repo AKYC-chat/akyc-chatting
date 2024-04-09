@@ -1,17 +1,14 @@
 package main
 
 import (
-	"github.com/AKYC-chat/akyc-chatting/messageconnector"
 	"log"
+
+	"github.com/AKYC-chat/akyc-chatting/connector"
 )
 
 func main() {
-
-	//sqsConnection := messageconnector.SqsConnection{}
-	//client := sqsConnection.GetConnection()
-	//client.SendMessage("Hello World")
-	client := messageconnector.GetConnection()
-	url, err := client.CreateQueue("test-1", true)
+	messageHandler := connector.GetConnection()
+	url, err := messageHandler.CreateQueue("test1", true)
 	if err != nil {
 		log.Fatalf("CreateQueue err: %v", err)
 	}

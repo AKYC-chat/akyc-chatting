@@ -1,25 +1,26 @@
-package messageconnector
+package message
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
 const FIFO_SUFFIX = ".fifo"
 
-type SqsClient struct {
-	client *sqs.Client
+type SqsMessageHandler struct {
+	Client *sqs.Client
 }
 
-func (s SqsClient) SendMessage(messageBody string, messageUrl string, groupId string) {
+func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, groupId string) {
 
 	date := strings.Join(strings.Split(time.Now().Format(time.DateTime), " "), "/")
 	log.Printf("message duplicationId: %v \n", date)
-	_, err := s.client.SendMessage(context.TODO(), &sqs.SendMessageInput{
+	_, err := s.Client.SendMessage(context.TODO(), &sqs.SendMessageInput{
 		MessageBody:            aws.String(messageBody),
 		MessageGroupId:         aws.String(groupId),
 		QueueUrl:               aws.String(messageUrl),
@@ -31,8 +32,8 @@ func (s SqsClient) SendMessage(messageBody string, messageUrl string, groupId st
 	}
 }
 
-func (s SqsClient) ReceiveMessage() error {
-	client := s.client
+func (s SqsMessageHandler) ReceiveMessage() error {
+	client := s.Client
 	sqsUrl := "url"
 	_, err := client.ReceiveMessage(context.Background(), &sqs.ReceiveMessageInput{
 		QueueUrl: aws.String(sqsUrl),
@@ -46,11 +47,11 @@ func (s SqsClient) ReceiveMessage() error {
 	return err
 }
 
-func (s SqsClient) DeleteMessage() {
+func (s SqsMessageHandler) DeleteMessage() {
 
 }
 
-func (s SqsClient) CreateQueue(queueName string, isFifoQueue bool) (url string, err error) {
+func (s SqsMessageHandler) CreateQueue(queueName string, isFifoQueue bool) (url string, err error) {
 	var queueUrl string
 	queueAttributes := map[string]string{}
 
@@ -63,7 +64,7 @@ func (s SqsClient) CreateQueue(queueName string, isFifoQueue bool) (url string, 
 		}
 	}
 
-	queue, err := s.client.CreateQueue(context.TODO(), &sqs.CreateQueueInput{
+	queue, err := s.Client.CreateQueue(context.TODO(), &sqs.CreateQueueInput{
 		QueueName:  aws.String(queueName + FIFO_SUFFIX),
 		Attributes: queueAttributes,
 	})
@@ -74,8 +75,8 @@ func (s SqsClient) CreateQueue(queueName string, isFifoQueue bool) (url string, 
 	queueUrl = *queue.QueueUrl
 	return queueUrl, err
 }
-func (s SqsClient) GetQueueList() (queueUrls []string, err error) {
-	paginator := sqs.NewListQueuesPaginator(s.client, &sqs.ListQueuesInput{})
+func (s SqsMessageHandler) GetQueueList() (queueUrls []string, err error) {
+	paginator := sqs.NewListQueuesPaginator(s.Client, &sqs.ListQueuesInput{})
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(context.TODO())
 		if err != nil {
