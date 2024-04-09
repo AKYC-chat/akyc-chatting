@@ -20,17 +20,20 @@ type MessageQueueConnector interface {
 type SqsMessageQueueConnector struct {
 }
 
-func (conn *SqsMessageQueueConnector) MessageQueueConnect(configuration SqsConfiguration) SqsMessageQueueHandler {
+func (conn SqsMessageQueueConnector) MessageQueueConnect(configuration SqsConfiguration) MessageQueueHandler {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile(configuration.profile))
 	if err != nil {
 		log.Fatal(err)
 	}
 	client := sqs.NewFromConfig(cfg)
 
-	return SqsMessageQueueHandler{Client: client}
+	return MessageQueueHandler(&SqsMessageQueueHandler{Client: client})
 }
 
 // Config
+type Configuration interface {
+}
+
 type SqsConfiguration struct {
 	profile string
 }
@@ -89,5 +92,6 @@ func Run(connector MessageQueueConnector) {
 }
 
 func main() {
-
+	// c := SqsMessageQueueConnector{}
+	// Run(c)
 }
