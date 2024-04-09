@@ -12,7 +12,7 @@ type Connector interface {
 	GetConnection() message.MessageHandler
 }
 
-func GetConnection() message.MessageHandler {
+func SqsGetConnection() message.MessageHandler {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("local"))
 	if err != nil {
 		panic("configuration error, " + err.Error())

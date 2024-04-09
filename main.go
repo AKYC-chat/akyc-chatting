@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	messageHandler := connector.GetConnection()
+	messageHandler := connector.SqsGetConnection()
 	queueUrls, err := messageHandler.GetQueueList()
 
 	if err != nil {
