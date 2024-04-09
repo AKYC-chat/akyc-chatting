@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/AKYC-chat/akyc-chatting/connector"
@@ -8,9 +9,11 @@ import (
 
 func main() {
 	messageHandler := connector.GetConnection()
-	url, err := messageHandler.CreateQueue("test1", true)
+	queueUrls, err := messageHandler.GetQueueList()
+
 	if err != nil {
-		log.Fatalf("CreateQueue err: %v", err)
+		log.Fatal(err)
 	}
-	log.Println(url)
+
+	fmt.Println(queueUrls)
 }

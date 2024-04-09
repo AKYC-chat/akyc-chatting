@@ -13,7 +13,7 @@ type Connector interface {
 }
 
 func GetConnection() message.MessageHandler {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("local"))
 	if err != nil {
 		panic("configuration error, " + err.Error())
 	}
