@@ -25,3 +25,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6 // indirect
 	github.com/aws/smithy-go v1.20.2 // indirect
 )
+
+replace github.com/AKYC-chat/akyc-chatting/runner => ./runner
+
+replace github.com/AKYC-chat/akyc-chatting/websocket => ./websocket
+
+replace github.com/AKYC-chat/akyc-chatting/util => ./util
