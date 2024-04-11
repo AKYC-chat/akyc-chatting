@@ -2,13 +2,11 @@ package message
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"log"
-	"strings"
-	"time"
-
+	"github.com/AKYC-chat/akyc-chatting/util"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"log"
 )
 
 const FifoSuffix = ".fifo"
@@ -17,20 +15,19 @@ type SqsMessageHandler struct {
 	Client *sqs.Client
 }
 
-func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, groupId string) {
-	// MessageDeduplicationId: 메세지 생성 날짜 기준
-	date := strings.Join(strings.Split(time.Now().Format(time.DateTime), " "), "/")
-	log.Printf("message duplicationId: %v \n", date)
-	_, err := s.Client.SendMessage(context.TODO(), &sqs.SendMessageInput{
+func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, groupId string) (messageId *string, err error) {
+
+	messageOutPut, err := s.Client.SendMessage(context.TODO(), &sqs.SendMessageInput{
 		MessageBody:            aws.String(messageBody),
 		MessageGroupId:         aws.String(groupId),
 		QueueUrl:               aws.String(messageUrl),
-		MessageDeduplicationId: aws.String(date),
+		MessageDeduplicationId: aws.String(util.MessageDateTime()),
 	})
 	if err != nil {
 		log.Fatalln(err)
-		return
+		return nil, err
 	}
+	return messageOutPut.MessageId, nil
 
 }
 
@@ -59,9 +56,9 @@ func (s SqsMessageHandler) ReceiveMessage(messageUrl string) ([]Message, error) 
 	for _, message := range *messages {
 		messageBody := aws.ToString(message.Body)
 		groupId := message.Attributes["MessageGroupId"]
-		receiveTime := parseTimestamp(message.Attributes["ApproximateFirstReceiveTimestamp"])
+		receiveTime := util.ParseTimestamp(message.Attributes["ApproximateFirstReceiveTimestamp"])
 
-		sentTime := parseTimestamp(message.Attributes["SentTimestamp"])
+		sentTime := util.ParseTimestamp(message.Attributes["SentTimestamp"])
 
 		messageList = append(
 			messageList,
@@ -87,10 +84,20 @@ func (s SqsMessageHandler) CreateQueue(queueName string, isFifoQueue bool) (url 
 			"DeduplicationScope":        "messageGroup",
 			"FifoThroughputLimit":       "perMessageGroupId",
 		}
-	}
+		queue, err := s.Client.CreateQueue(context.TODO(), &sqs.CreateQueueInput{
+			QueueName:  aws.String(queueName + FifoSuffix),
+			Attributes: queueAttributes,
+		})
+		if err != nil {
+			log.Fatalf("Couldn't create queue %v. caused by: %v\n", queueName, err)
+			return "", err
+		}
+		queueUrl = *queue.QueueUrl
 
+		return queueUrl, err
+	}
 	queue, err := s.Client.CreateQueue(context.TODO(), &sqs.CreateQueueInput{
-		QueueName:  aws.String(queueName + FifoSuffix),
+		QueueName:  aws.String(queueName),
 		Attributes: queueAttributes,
 	})
 	if err != nil {
@@ -116,15 +123,6 @@ func (s SqsMessageHandler) GetQueueList() (queueUrls []string, err error) {
 		log.Println("empty queue")
 	}
 	return queueUrls, err
-}
-
-func parseTimestamp(timestampStr string) time.Time {
-
-	parse, err := time.Parse(time.DateTime, timestampStr)
-	if err != nil {
-		panic(err)
-	}
-	return parse
 }
 
 func deleteMessage(client *sqs.Client) {
