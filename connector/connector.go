@@ -15,7 +15,7 @@ type Connector interface {
 func SqsGetConnection() message.MessageHandler {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("local"))
 	if err != nil {
-		panic("configuration error, " + err.Error())
+		panic(err)
 	}
 	client := message.SqsMessageHandler{Client: sqs.NewFromConfig(cfg)}
 	return &client

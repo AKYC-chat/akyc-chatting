@@ -16,7 +16,6 @@ type SqsMessageHandler struct {
 }
 
 func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, groupId string) (messageId *string, err error) {
-
 	messageOutPut, err := s.Client.SendMessage(context.TODO(), &sqs.SendMessageInput{
 		MessageBody:            aws.String(messageBody),
 		MessageGroupId:         aws.String(groupId),
@@ -25,6 +24,7 @@ func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, gr
 	})
 	if err != nil {
 		log.Fatalln(err)
+
 		return nil, err
 	}
 	return messageOutPut.MessageId, nil
@@ -109,7 +109,9 @@ func (s SqsMessageHandler) CreateQueue(queueName string, isFifoQueue bool) (url 
 	return queueUrl, err
 }
 func (s SqsMessageHandler) GetQueueList() (queueUrls []string, err error) {
-	paginator := sqs.NewListQueuesPaginator(s.Client, &sqs.ListQueuesInput{})
+	paginator := sqs.NewListQueuesPaginator(s.Client, &sqs.ListQueuesInput{
+		QueueNamePrefix: aws.String("Aykc-Chat"),
+	})
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(context.TODO())
 		if err != nil {
