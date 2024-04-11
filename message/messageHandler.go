@@ -3,7 +3,7 @@ package message
 import "time"
 
 type MessageHandler interface {
-	SendMessage(messageBody string, messageUrl string, groupId string)
+	SendMessage(messageBody string, messageUrl string, groupId string) (messageId *string, err error)
 
 	ReceiveMessage(messageUrl string) ([]Message, error)
 	DeleteMessage()
