@@ -13,8 +13,8 @@ type MessageHandler interface {
 }
 
 type Message struct {
-	body              *string
-	groupId           *string
-	sentTimestamp     time.Time
-	receivedTimestamp time.Time
+	Body              string
+	GroupId           string
+	SentTimestamp     *time.Time
+	ReceivedTimestamp *time.Time
 }

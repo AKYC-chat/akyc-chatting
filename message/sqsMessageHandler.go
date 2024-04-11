@@ -31,7 +31,7 @@ func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, gr
 
 }
 
-func (s SqsMessageHandler) ReceiveMessage(messageUrl string) ([]Message, error) {
+func (s SqsMessageHandler) ReceiveMessage(messageUrl string) (messageList []Message, err error) {
 	client := *s.Client
 
 	// 메세지 가져오기
@@ -43,29 +43,40 @@ func (s SqsMessageHandler) ReceiveMessage(messageUrl string) ([]Message, error) 
 		MessageAttributeNames: []string{
 			"All",
 		},
-		MaxNumberOfMessages: 10,
+		MaxNumberOfMessages: 1,
 		VisibilityTimeout:   30,
 	})
 	if err != nil {
 		panic(err)
 	}
 
+	//messageIdList := make([]*string, 0)
+
 	// sqs struct -> messageList 변환
 	messages := &messageOutput.Messages
-	messageList := make([]Message, 0)
 	for _, message := range *messages {
 		messageBody := aws.ToString(message.Body)
 		groupId := message.Attributes["MessageGroupId"]
-		receiveTime := util.ParseTimestamp(message.Attributes["ApproximateFirstReceiveTimestamp"])
-
-		sentTime := util.ParseTimestamp(message.Attributes["SentTimestamp"])
+		receiveTime, err := util.ParseTimestamp(message.Attributes["ApproximateFirstReceiveTimestamp"])
+		if err != nil {
+			panic(err)
+		}
+		sentTime, err := util.ParseTimestamp(message.Attributes["SentTimestamp"])
+		if err != nil {
+			panic(err)
+		}
 
 		messageList = append(
 			messageList,
-			Message{body: &messageBody, groupId: &groupId, receivedTimestamp: receiveTime, sentTimestamp: sentTime},
+			Message{Body: messageBody, GroupId: groupId, ReceivedTimestamp: receiveTime, SentTimestamp: sentTime},
 		)
-	}
+		//messageIdList = append(messageIdList, message.MessageId)
+		log.Println(messageBody)
+		log.Println(message.MessageId)
 
+		deleteMessage(&client, &messageUrl, message.ReceiptHandle)
+
+	}
 	return messageList, err
 }
 
@@ -127,6 +138,12 @@ func (s SqsMessageHandler) GetQueueList() (queueUrls []string, err error) {
 	return queueUrls, err
 }
 
-func deleteMessage(client *sqs.Client) {
-	client.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{})
+func deleteMessage(client *sqs.Client, url *string, messageId *string) {
+	_, err := client.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
+		QueueUrl:      url,
+		ReceiptHandle: messageId,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
