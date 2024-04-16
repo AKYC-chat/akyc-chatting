@@ -8,6 +8,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/AKYC-chat/akyc-chatting/util"
 )
 
 const (
@@ -19,16 +21,17 @@ type Connection interface {
 }
 
 type Websocket struct {
-	conn   Connection
-	bufrw  *bufio.ReadWriter
-	header http.Header
+	SessionId string
+	conn      Connection
+	bufrw     *bufio.ReadWriter
+	header    http.Header
 }
 
 func New(w http.ResponseWriter, r *http.Request) (*Websocket, error) {
 	hj, ok := w.(http.Hijacker)
 
 	if !ok {
-		return nil, errors.New("Hijacker를 지원하지 않습니다.")
+		return nil, errors.New("Hijacker를 지원하지 않습니다")
 	}
 
 	conn, bufrw, err := hj.Hijack()
@@ -37,7 +40,7 @@ func New(w http.ResponseWriter, r *http.Request) (*Websocket, error) {
 		return nil, err
 	}
 
-	ws := Websocket{conn, bufrw, r.Header}
+	ws := Websocket{util.SessionIdGenerator(), conn, bufrw, r.Header}
 	err = ws.handshake()
 
 	if err != nil {
@@ -143,6 +146,11 @@ func (ws *Websocket) Send(f Frame) error {
 	}
 
 	return ws.write(data)
+}
+
+func (ws *Websocket) Ping(payload string) {
+	f := Frame{Payload: []byte(payload), PayloadLength: len(payload), Opcode: OPCODE_PING}
+	ws.Send(f)
 }
 
 func (ws *Websocket) Close() error {

@@ -13,27 +13,8 @@ import (
 
 type DynamoDBAttrType string
 
-const (
-	DynamoDBKeyTypePart DynamoDBAttrType = "PARTITION"
-	DynamoDBKeyTypeSort DynamoDBAttrType = "SORT"
-)
-
 type DynamoDBHandler struct {
 	Client *dynamodb.Client
-}
-
-type DynamoDBTableAttribute struct {
-	AttributeName string
-	// AttributeType
-	// The data type for the attribute, where:
-	//   - S - the attribute is of type String
-	//   - N - the attribute is of type Number
-	//   - B - the attribute is of type Binary
-	AttributeType types.ScalarAttributeType
-	//   - KeyType - The role that the key attribute will assume:
-	//   - HASH - partition key
-	//   - RANGE - sort key
-	DynamoDBKeyType DynamoDBAttrType
 }
 
 // ex)
@@ -42,25 +23,37 @@ type DynamoDBTableAttribute struct {
 //		{AttributeName: "part", AttributeType: types.ScalarAttributeTypeS, DynamoDBKeyType: database.DynamoDBKeyTypePart},
 //		{AttributeName: "sort", AttributeType: types.ScalarAttributeTypeS, DynamoDBKeyType: database.DynamoDBKeyTypeSort},
 //	})
-func (d DynamoDBHandler) CreateTable(tableName string, attributes []DynamoDBTableAttribute) (*types.TableDescription, error) {
+func convertAttributeTypeToDynamoDBAttributeType(tableAttribute TableAttribute) types.AttributeDefinition {
+	var attrType types.ScalarAttributeType
+	switch tableAttribute.AttributeType {
+	case TINYINT, BIT, BOOL, SMALLINT, MEDIUMINT, INTEGER, BIGINT,
+		DECIMAL, FLOAT, DOUBLE:
+		attrType = types.ScalarAttributeTypeN
+	default:
+		attrType = types.ScalarAttributeTypeS
+	}
+
+	return types.AttributeDefinition{
+		AttributeName: aws.String(tableAttribute.AttributeName),
+		AttributeType: attrType,
+	}
+}
+
+func (d DynamoDBHandler) CreateTable(tableName string, attributes []TableAttribute) (*types.TableDescription, error) {
 	var tableDesc *types.TableDescription
 	var attributeDefinitions []types.AttributeDefinition
 	var keySchemas []types.KeySchemaElement
 
 	for _, v := range attributes {
-		attributeDefinitions = append(attributeDefinitions, types.AttributeDefinition{
-			AttributeName: aws.String(v.AttributeName),
-			AttributeType: v.AttributeType,
-		})
+		attributeDefinitions = append(attributeDefinitions, convertAttributeTypeToDynamoDBAttributeType(v))
 
-		switch v.DynamoDBKeyType {
-		case DynamoDBKeyTypePart:
+		if v.PrimaryKey {
 			keySchemas = append(keySchemas, types.KeySchemaElement{
 				AttributeName: aws.String(v.AttributeName),
 				KeyType:       types.KeyTypeHash,
 			})
-
-		case DynamoDBKeyTypeSort:
+		}
+		if v.SortKey {
 			keySchemas = append(keySchemas, types.KeySchemaElement{
 				AttributeName: aws.String(v.AttributeName),
 				KeyType:       types.KeyTypeRange,
@@ -92,8 +85,13 @@ func (d DynamoDBHandler) CreateTable(tableName string, attributes []DynamoDBTabl
 	return tableDesc, err
 }
 
-func (d DynamoDBHandler) DeleteTable() {
-
+func (d DynamoDBHandler) DeleteTable(tableName string) error {
+	_, err := d.Client.DeleteTable(context.TODO(), &dynamodb.DeleteTableInput{
+		TableName: aws.String(tableName)})
+	if err != nil {
+		log.Printf("Couldn't delete table %v. Here's why: %v\n", tableName, err)
+	}
+	return err
 }
 
 func (d DynamoDBHandler) Insert(tableName string, Object interface{}) error {
@@ -111,8 +109,23 @@ func (d DynamoDBHandler) Insert(tableName string, Object interface{}) error {
 	return err
 }
 
-func (d DynamoDBHandler) Delete() {
-
+func (d DynamoDBHandler) Delete(tableName string, data map[string]interface{}) error {
+	var deleteValue map[string]types.AttributeValue
+	for k, v := range data {
+		val, err := attributevalue.Marshal(v)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		deleteValue[k] = val
+	}
+	_, err := d.Client.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
+		TableName: aws.String(tableName), Key: deleteValue,
+	})
+	if err != nil {
+		log.Printf("Couldn't delete item from the table. Here's why: %v\n", err)
+	}
+	return err
 }
 
 func (d DynamoDBHandler) Get() {

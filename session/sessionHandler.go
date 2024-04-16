@@ -1,8 +1,10 @@
 package session
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/AKYC-chat/akyc-chatting/database"
@@ -17,7 +19,6 @@ type SessionStorage struct {
 
 type Session struct {
 	UserId           string
-	SessionId        string
 	SessionWebsocket websocket.Websocket
 }
 
@@ -30,7 +31,7 @@ type SessionEntity struct {
 func (sessionStorage *SessionStorage) Append(ws websocket.Websocket) string {
 	sessionId := util.SessionIdGenerator()
 	userId := util.SessionIdGenerator()
-	session := Session{SessionId: sessionId, UserId: userId, SessionWebsocket: ws}
+	session := Session{UserId: userId, SessionWebsocket: ws}
 	sessionStorage.sessions = append(sessionStorage.sessions, session)
 
 	// TODO: Session DB에 세션 정보 저장
@@ -41,23 +42,48 @@ func (sessionStorage *SessionStorage) Append(ws websocket.Websocket) string {
 
 func (sessionStorage *SessionStorage) DeleteSession(sessionId string) error {
 	idx, err := sessionStorage.indexOf(sessionId)
-
+	fmt.Println(idx)
 	if err != nil {
 		return err
 	}
 
-	sessionStorage.sessions = append(sessionStorage.sessions[:idx], sessionStorage.sessions[idx:]...)
+	sessionStorage.sessions = append(sessionStorage.sessions[:idx], sessionStorage.sessions[idx+1:]...)
 
 	return nil
 }
 
-func (SessionStorage *SessionStorage) Print() {
-	fmt.Println(SessionStorage.sessions)
+// ex)
+// ctx, cancle := context.WithCancel(context.Background())
+// defer cancle()
+// go sessionStorage.CheckAlive(ctx)
+func (sessionStorage *SessionStorage) CheckAlive(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				for _, s := range sessionStorage.sessions {
+					log.Println(s.SessionWebsocket.SessionId + " PING")
+					s.SessionWebsocket.Ping(s.SessionWebsocket.SessionId)
+				}
+			}
+		}
+	}()
+
+}
+
+func (sessionStorage *SessionStorage) Print() {
+	fmt.Println(sessionStorage.sessions)
+	fmt.Println(len(sessionStorage.sessions))
 }
 
 func (sessionStorage *SessionStorage) indexOf(sessionId string) (int, error) {
 	for i, s := range sessionStorage.sessions {
-		if s.SessionId == sessionId {
+		if s.SessionWebsocket.SessionId == sessionId {
 			return i, nil
 		}
 	}

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/AKYC-chat/akyc-chatting/connector"
@@ -10,9 +11,9 @@ import (
 )
 
 var (
+	messageHandler         = connector.SqsGetConnection()
 	databaseHandler        = connector.DynamoDBGetConnection()
 	sessionStorage         = session.SessionStorage{Database: databaseHandler}
-	messageHandler         = connector.SqsGetConnection()
 	queueUrls, queueUrlErr = messageHandler.GetQueueList()
 )
 
@@ -36,50 +37,54 @@ func ReceiveMessageFromMessageQueue() {
 	}
 }
 
+func ReceiveWebsocket(ws *websocket.Websocket) {
+	for {
+		frame, err := ws.Recv()
+		if err != nil {
+			log.Println("옳바르지 않은 Frame양식 입니다")
+			log.Println(err)
+		}
+
+		switch frame.Opcode {
+		case websocket.OPCODE_PONG:
+			log.Println(frame.Text() + " PONG")
+		case websocket.OPCODE_CLOSE:
+			sessionStorage.DeleteSession(ws.SessionId)
+			sessionStorage.Print()
+			ws.Close()
+			return
+		case websocket.OPCODE_BINARY, websocket.OPCODE_FOR_TEXT:
+			messageId, err := messageHandler.SendMessage(frame.Text(), queueUrls[0], "test4546345345")
+
+			if err != nil {
+				log.Println("Message Queue에 정상적으로 전송되지 않았습니다")
+			}
+			fmt.Println(messageId)
+		}
+
+	}
+}
+
 func Run() {
 	go ReceiveMessageFromMessageQueue()
 
 	if queueUrlErr != nil {
-		fmt.Println("SQS에서 Queue url 정보를 가져 올 수 없습니다")
+		log.Println("SQS에서 Queue url 정보를 가져 올 수 없습니다")
 		panic(queueUrlErr)
 	}
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		ws, err := websocket.New(w, r)
+		go ReceiveWebsocket(ws)
+
 		sessionId := sessionStorage.Append(*ws)
-		fmt.Println("Connect Session id : ", sessionId)
-		ws.Send(websocket.Frame{Payload: []byte(sessionId), PayloadLength: len(sessionId), Opcode: websocket.OPCODE_FOR_TEXT})
+		log.Println("Connect Session id : ", sessionId)
+		sessionStorage.Print()
 
 		if err != nil {
 			fmt.Println("Websocket 생성 실패")
 			panic(err)
 		}
-
-		for {
-			frame, err := ws.Recv()
-
-			switch frame.Opcode {
-			case websocket.OPCODE_CLOSE:
-				// TODO: 해당 유저의 session id를 가져와야함
-				sessionStorage.Print()
-				sessionStorage.DeleteSession("test")
-			}
-
-			if err != nil {
-				fmt.Println("옳바르지 않은 Frame양식 입니다")
-				panic(err)
-			}
-
-			messageId, err := messageHandler.SendMessage(frame.Text(), queueUrls[0], "test4546345345")
-
-			if err != nil {
-				fmt.Println("Message Queue에 정상적으로 전송되지 않았습니다")
-				// panic(err)
-			}
-
-			fmt.Println(messageId)
-		}
-
 	})
 
 	http.ListenAndServe(":5050", nil)
