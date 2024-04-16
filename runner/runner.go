@@ -48,6 +48,7 @@ func Run() {
 		ws, err := websocket.New(w, r)
 		sessionId := sessionStorage.Append(*ws)
 		fmt.Println("Connect Session id : ", sessionId)
+		ws.Send(websocket.Frame{Payload: []byte(sessionId), PayloadLength: len(sessionId), Opcode: websocket.OPCODE_FOR_TEXT})
 
 		if err != nil {
 			fmt.Println("Websocket 생성 실패")
@@ -60,6 +61,7 @@ func Run() {
 			switch frame.Opcode {
 			case websocket.OPCODE_CLOSE:
 				// TODO: 해당 유저의 session id를 가져와야함
+				sessionStorage.Print()
 				sessionStorage.DeleteSession("test")
 			}
 
@@ -72,7 +74,7 @@ func Run() {
 
 			if err != nil {
 				fmt.Println("Message Queue에 정상적으로 전송되지 않았습니다")
-				panic(err)
+				// panic(err)
 			}
 
 			fmt.Println(messageId)
