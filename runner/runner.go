@@ -5,12 +5,17 @@ import (
 	"net/http"
 
 	"github.com/AKYC-chat/akyc-chatting/connector"
+	"github.com/AKYC-chat/akyc-chatting/database"
 	"github.com/AKYC-chat/akyc-chatting/message"
 	"github.com/AKYC-chat/akyc-chatting/session"
 	"github.com/AKYC-chat/akyc-chatting/websocket"
 )
 
-func ReceiveMessageFromMessageQueue(messageHandler message.MessageHandler, messageUrl string) {
+func ReceiveMessageFromMessageQueue(
+	messageHandler message.MessageHandler,
+	databaseHandler database.DatabaseHandler,
+	messageUrl string,
+) {
 	for {
 		messages, err := messageHandler.ReceiveMessage(messageUrl)
 
@@ -18,16 +23,25 @@ func ReceiveMessageFromMessageQueue(messageHandler message.MessageHandler, messa
 			panic(err)
 		}
 
-		fmt.Println(messages)
+		if len(messages) != 0 {
+			for _, m := range messages {
+				switch m.Body {
+				case "create table":
+
+				}
+			}
+		}
+
 	}
 }
 
 func Run() {
 	sessionStorage := session.SessionStorage{}
 	messageHandler := connector.SqsGetConnection()
+	databaseHandler := connector.DynamoDBGetConnection()
 	queueUrls, err := messageHandler.GetQueueList()
 
-	// go ReceiveMessageFromMessageQueue(messageHandler, queueUrls[0])
+	go ReceiveMessageFromMessageQueue(messageHandler, databaseHandler, queueUrls[0])
 
 	if err != nil {
 		fmt.Println("SQS에서 Queue url 정보를 가져 올 수 없습니다")
@@ -39,7 +53,6 @@ func Run() {
 		sessionId := sessionStorage.Append(*ws)
 		fmt.Println("Connect Session id : ", sessionId)
 
-		sessionStorage.Print()
 		if err != nil {
 			fmt.Println("Websocket 생성 실패")
 			panic(err)
