@@ -2,11 +2,12 @@ package message
 
 import (
 	"context"
+	"log"
+
 	"github.com/AKYC-chat/akyc-chatting/util"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"log"
 )
 
 const FifoSuffix = ".fifo"
@@ -23,7 +24,7 @@ func (s SqsMessageHandler) SendMessage(messageBody string, messageUrl string, gr
 		MessageDeduplicationId: aws.String(util.MessageDateTime()),
 	})
 	if err != nil {
-		log.Fatalln(err)
+		// log.Fatalln(err)
 
 		return nil, err
 	}

@@ -5,21 +5,23 @@ import (
 	"net/http"
 
 	"github.com/AKYC-chat/akyc-chatting/connector"
-	"github.com/AKYC-chat/akyc-chatting/database"
-	"github.com/AKYC-chat/akyc-chatting/message"
 	"github.com/AKYC-chat/akyc-chatting/session"
 	"github.com/AKYC-chat/akyc-chatting/websocket"
 )
 
-func ReceiveMessageFromMessageQueue(
-	messageHandler message.MessageHandler,
-	databaseHandler database.DatabaseHandler,
-	messageUrl string,
-) {
+var (
+	databaseHandler        = connector.DynamoDBGetConnection()
+	sessionStorage         = session.SessionStorage{Database: databaseHandler}
+	messageHandler         = connector.SqsGetConnection()
+	queueUrls, queueUrlErr = messageHandler.GetQueueList()
+)
+
+func ReceiveMessageFromMessageQueue() {
 	for {
-		messages, err := messageHandler.ReceiveMessage(messageUrl)
+		messages, err := messageHandler.ReceiveMessage(queueUrls[0])
 
 		if err != nil {
+			fmt.Println("PANIC!!!!!!")
 			panic(err)
 		}
 
@@ -31,21 +33,15 @@ func ReceiveMessageFromMessageQueue(
 				}
 			}
 		}
-
 	}
 }
 
 func Run() {
-	sessionStorage := session.SessionStorage{}
-	messageHandler := connector.SqsGetConnection()
-	databaseHandler := connector.DynamoDBGetConnection()
-	queueUrls, err := messageHandler.GetQueueList()
+	go ReceiveMessageFromMessageQueue()
 
-	go ReceiveMessageFromMessageQueue(messageHandler, databaseHandler, queueUrls[0])
-
-	if err != nil {
+	if queueUrlErr != nil {
 		fmt.Println("SQS에서 Queue url 정보를 가져 올 수 없습니다")
-		panic(err)
+		panic(queueUrlErr)
 	}
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +56,12 @@ func Run() {
 
 		for {
 			frame, err := ws.Recv()
+
+			switch frame.Opcode {
+			case websocket.OPCODE_CLOSE:
+				// TODO: 해당 유저의 session id를 가져와야함
+				sessionStorage.DeleteSession("test")
+			}
 
 			if err != nil {
 				fmt.Println("옳바르지 않은 Frame양식 입니다")

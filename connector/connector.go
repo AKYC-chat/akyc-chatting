@@ -19,7 +19,7 @@ func SqsGetConnection() message.MessageHandler {
 	return &client
 }
 
-func DynamoDBGetConnection() database.DatabaseHandler {
+func DynamoDBGetConnection() database.DynamoDBHandler {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("local"))
 	if err != nil {
 		panic(err)
@@ -27,5 +27,5 @@ func DynamoDBGetConnection() database.DatabaseHandler {
 
 	client := database.DynamoDBHandler{Client: dynamodb.NewFromConfig(cfg)}
 
-	return &client
+	return client
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go/aws"
@@ -36,11 +37,11 @@ type DynamoDBTableAttribute struct {
 }
 
 // ex)
-// databaseHandler.CreateTable("test33", []database.DynamoDBTableAttribute{
-// 	{AttributeName: "part", AttributeType: types.ScalarAttributeTypeS, DynamoDBKeyType: database.DynamoDBKeyTypePart},
-// 	{AttributeName: "sort", AttributeType: types.ScalarAttributeTypeS, DynamoDBKeyType: database.DynamoDBKeyTypeSort},
-// })
-
+//
+//	databaseHandler.CreateTable("test33", []database.DynamoDBTableAttribute{
+//		{AttributeName: "part", AttributeType: types.ScalarAttributeTypeS, DynamoDBKeyType: database.DynamoDBKeyTypePart},
+//		{AttributeName: "sort", AttributeType: types.ScalarAttributeTypeS, DynamoDBKeyType: database.DynamoDBKeyTypeSort},
+//	})
 func (d DynamoDBHandler) CreateTable(tableName string, attributes []DynamoDBTableAttribute) (*types.TableDescription, error) {
 	var tableDesc *types.TableDescription
 	var attributeDefinitions []types.AttributeDefinition
@@ -95,8 +96,19 @@ func (d DynamoDBHandler) DeleteTable() {
 
 }
 
-func (d DynamoDBHandler) Insert() {
+func (d DynamoDBHandler) Insert(tableName string, Object interface{}) error {
+	item, err := attributevalue.MarshalMap(Object)
 
+	if err != nil {
+		panic(err)
+	}
+	_, err = d.Client.PutItem(context.TODO(), &dynamodb.PutItemInput{
+		TableName: aws.String(tableName), Item: item,
+	})
+	if err != nil {
+		log.Printf("Couldn't add item to table. Here's why: %v\n", err)
+	}
+	return err
 }
 
 func (d DynamoDBHandler) Delete() {
