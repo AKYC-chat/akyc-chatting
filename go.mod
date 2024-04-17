@@ -47,5 +47,3 @@ replace github.com/AKYC-chat/akyc-chatting/websocket => ./websocket
 replace github.com/AKYC-chat/akyc-chatting/util => ./util
 
 replace github.com/AKYC-chat/akyc-chatting/database => ./database
-
-replace github.com/AKYC-chat/akyc-chatting/connections => ./connections

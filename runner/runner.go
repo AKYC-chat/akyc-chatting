@@ -73,7 +73,7 @@ func Run() {
 		ws, err := websocket.New(w, r)
 		go ReceiveWebsocket(ws)
 
-		sessionId := SessionStorage.Append(*ws)
+		_, sessionId := SessionStorage.Append(*ws)
 		log.Println("Connect Session id : ", sessionId)
 
 		if err != nil {

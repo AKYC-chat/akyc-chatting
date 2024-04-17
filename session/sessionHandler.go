@@ -2,7 +2,6 @@ package session
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -24,22 +23,21 @@ type Session struct {
 	SessionWebsocket websocket.Websocket
 }
 
-func (sessionStorage *SessionStorage) Append(ws websocket.Websocket) string {
+func (sessionStorage *SessionStorage) Append(ws websocket.Websocket) (string, string) {
 	sessionId := util.SessionIdGenerator()
 	userId := util.SessionIdGenerator()
-	time := time.Now().String()
+	time := time.Now().UTC().String()
 
 	session := Session{UserId: userId, SessionWebsocket: ws, CreateAt: time}
-	fmt.Println(session)
 	sessionStorage.sessions = append(sessionStorage.sessions, session)
 
 	sessionEntity := SessionEntity{UserId: userId, CreateAt: time, SessionId: sessionId}
 	err := sessionDatabase.CreateSession(sessionEntity)
 	if err != nil {
-		log.Printf("Couldn't add item to table. Here's why: %v\n", err)
+		log.Panicf("Couldn't add item to table. Here's why: %v\n", err)
 	}
 
-	return sessionId
+	return userId, sessionId
 }
 
 func (sessionStorage *SessionStorage) DeleteSession(sessionId string) error {
@@ -84,6 +82,24 @@ func (sessionStorage *SessionStorage) GetSessions() []SessionEntity {
 		log.Println(err)
 	}
 	return sessionEntities
+}
+
+func (sessionStorage *SessionStorage) GetSessionByUserId(userId string) Session {
+	sessionEntity, err := sessionDatabase.GetSessionByUserId(userId)
+	if err != nil {
+		panic(err)
+	}
+
+	idx, err := sessionStorage.indexOf(sessionEntity.SessionId)
+	if err != nil {
+		log.Println("Session id에 해당하는 유저가 없습니다.")
+	}
+
+	return sessionStorage.sessions[idx]
+}
+
+func (sessionStorage *SessionStorage) GetSessionCount() int {
+	return len(sessionStorage.sessions)
 }
 
 func (sessionStorage *SessionStorage) indexOf(sessionId string) (int, error) {

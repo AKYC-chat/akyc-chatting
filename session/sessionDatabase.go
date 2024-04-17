@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/AKYC-chat/akyc-chatting/connections"
@@ -75,6 +76,33 @@ func (sessionDatabase *SessionDatabase) GetSession(sessionEntity SessionEntity) 
 		}
 	}
 	return responseSessionEntity, err
+}
+
+func (sessionDatabase *SessionDatabase) GetSessionByUserId(userId string) (SessionEntity, error) {
+	var sessionEntity SessionEntity
+
+	params, err := attributevalue.MarshalList([]interface{}{userId})
+	if err != nil {
+		panic(err)
+	}
+
+	response, err := connections.DatabaseConnection.Conn.ExecuteStatement(context.TODO(), &dynamodb.ExecuteStatementInput{
+		Statement: aws.String(
+			fmt.Sprintf("SELECT * FROM \"%v\" WHERE user_id=?", sessionTableName),
+		),
+		Parameters: params,
+	})
+
+	if err != nil {
+		log.Printf("Couldn't get info about %v. Here's why: %v\n", userId, err)
+	} else {
+		err = attributevalue.UnmarshalMap(response.Items[0], &sessionEntity)
+		if err != nil {
+			log.Printf("Couldn't unmarshal response. Here's why: %v\n", err)
+		}
+	}
+
+	return sessionEntity, err
 }
 
 func (sessionDatabase *SessionDatabase) GetAllSessions() ([]SessionEntity, error) {
