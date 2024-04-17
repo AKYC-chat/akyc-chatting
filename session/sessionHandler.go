@@ -77,13 +77,12 @@ func (sessionStorage *SessionStorage) CloseCurrSessions() error {
 	return nil
 }
 
-func (sessionStorage *SessionStorage) GetSession() []SessionEntity {
+func (sessionStorage *SessionStorage) GetSessions() []SessionEntity {
 	sessionEntities, err := sessionDatabase.GetAllSessions()
 
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(sessionEntities)
 	return sessionEntities
 }
 

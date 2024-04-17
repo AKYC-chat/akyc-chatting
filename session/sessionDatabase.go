@@ -16,8 +16,7 @@ const (
 	sessionTableName = "AYKC_SESSION"
 )
 
-type SessionDatabase struct {
-}
+type SessionDatabase struct{}
 
 type SessionEntity struct {
 	UserId    string `dynamodbav:"user_id"`
@@ -30,10 +29,7 @@ func (s SessionEntity) GetKey() map[string]types.AttributeValue {
 	if err != nil {
 		panic(err)
 	}
-	// sessionId, err := attributevalue.Marshal(s.SessionId)
-	// if err != nil {
-	// 	panic(err)
-	// }
+
 	createAt, err := attributevalue.Marshal(s.CreateAt)
 	if err != nil {
 		panic(err)
@@ -66,18 +62,19 @@ func (s *SessionDatabase) DeleteSession(e SessionEntity) error {
 }
 
 func (sessionDatabase *SessionDatabase) GetSession(sessionEntity SessionEntity) (SessionEntity, error) {
+	var responseSessionEntity SessionEntity
 	response, err := connections.DatabaseConnection.Conn.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		Key: sessionEntity.GetKey(), TableName: aws.String(sessionTableName),
 	})
 	if err != nil {
 		log.Printf("Couldn't get info about %v. Here's why: %v\n", sessionEntity.UserId, err)
 	} else {
-		err = attributevalue.UnmarshalMap(response.Item, &sessionEntity)
+		err = attributevalue.UnmarshalMap(response.Item, &responseSessionEntity)
 		if err != nil {
 			log.Printf("Couldn't unmarshal response. Here's why: %v\n", err)
 		}
 	}
-	return sessionEntity, err
+	return responseSessionEntity, err
 }
 
 func (sessionDatabase *SessionDatabase) GetAllSessions() ([]SessionEntity, error) {
