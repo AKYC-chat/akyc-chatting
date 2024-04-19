@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	sessionDatabase = session.SessionDatabase{}
+	sessionDatabase = session.SessionDatabase{TableName: "AYKC_SESSION"}
 )
 
 func TestCreateSessionDatabase(t *testing.T) {

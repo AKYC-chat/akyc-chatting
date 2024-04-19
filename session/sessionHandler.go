@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	sessionDatabase = SessionDatabase{}
+	sessionDatabase = SessionDatabase{TableName: "AYKC_SESSION"}
 )
 
 type SessionStorage struct {

@@ -13,11 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 )
 
-const (
-	sessionTableName = "AYKC_SESSION"
-)
-
-type SessionDatabase struct{}
+type SessionDatabase struct {
+	TableName string
+}
 
 type SessionEntity struct {
 	UserId    string `dynamodbav:"user_id"`
@@ -39,22 +37,22 @@ func (s SessionEntity) GetKey() map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{"user_id": userId, "create_at": createAt}
 }
 
-func (s *SessionDatabase) CreateSession(e SessionEntity) error {
+func (sessionDatabase *SessionDatabase) CreateSession(e SessionEntity) error {
 	item, err := attributevalue.MarshalMap(e)
 
 	if err != nil {
 		panic(err)
 	}
 	_, err = connections.DatabaseConnection.Conn.PutItem(context.TODO(), &dynamodb.PutItemInput{
-		TableName: aws.String(sessionTableName), Item: item,
+		TableName: aws.String(sessionDatabase.TableName), Item: item,
 	})
 
 	return err
 }
 
-func (s *SessionDatabase) DeleteSession(e SessionEntity) error {
+func (sessionDatabase *SessionDatabase) DeleteSession(e SessionEntity) error {
 	_, err := connections.DatabaseConnection.Conn.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
-		TableName: aws.String(sessionTableName), Key: e.GetKey(),
+		TableName: aws.String(sessionDatabase.TableName), Key: e.GetKey(),
 	})
 	if err != nil {
 		log.Printf("Couldn't delete %v from the table. Here's why: %v\n", e.UserId, err)
@@ -65,7 +63,7 @@ func (s *SessionDatabase) DeleteSession(e SessionEntity) error {
 func (sessionDatabase *SessionDatabase) GetSession(sessionEntity SessionEntity) (SessionEntity, error) {
 	var responseSessionEntity SessionEntity
 	response, err := connections.DatabaseConnection.Conn.GetItem(context.TODO(), &dynamodb.GetItemInput{
-		Key: sessionEntity.GetKey(), TableName: aws.String(sessionTableName),
+		Key: sessionEntity.GetKey(), TableName: aws.String(sessionDatabase.TableName),
 	})
 	if err != nil {
 		log.Printf("Couldn't get info about %v. Here's why: %v\n", sessionEntity.UserId, err)
@@ -88,7 +86,7 @@ func (sessionDatabase *SessionDatabase) GetSessionByUserId(userId string) (Sessi
 
 	response, err := connections.DatabaseConnection.Conn.ExecuteStatement(context.TODO(), &dynamodb.ExecuteStatementInput{
 		Statement: aws.String(
-			fmt.Sprintf("SELECT * FROM \"%v\" WHERE user_id=?", sessionTableName),
+			fmt.Sprintf("SELECT * FROM \"%v\" WHERE user_id=?", sessionDatabase.TableName),
 		),
 		Parameters: params,
 	})
@@ -117,7 +115,7 @@ func (sessionDatabase *SessionDatabase) GetAllSessions() ([]SessionEntity, error
 		log.Printf("Couldn't build expressions for scan. Here's why: %v\n", err)
 	} else {
 		scanPaginator := dynamodb.NewScanPaginator(connections.DatabaseConnection.Conn, &dynamodb.ScanInput{
-			TableName:                 aws.String(sessionTableName),
+			TableName:                 aws.String(sessionDatabase.TableName),
 			ExpressionAttributeNames:  expr.Names(),
 			ExpressionAttributeValues: expr.Values(),
 			FilterExpression:          expr.Filter(),
